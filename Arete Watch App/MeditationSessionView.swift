@@ -120,7 +120,8 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
                 if hrSamples.count > requiredStableTime {
                     hrSamples.removeFirst(hrSamples.count - requiredStableTime)
                 }
-                if let minHR = hrSamples.min(),
+                if hrSamples.count >= requiredStableTime,
+                   let minHR = hrSamples.min(),
                    let maxHR = hrSamples.max(),
                    (maxHR - minHR) <= stabilityThreshold
                 {
