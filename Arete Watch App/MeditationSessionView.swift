@@ -3,6 +3,7 @@ import HealthKit
 import WatchKit   // for WKInterfaceDevice
 import Combine
 
+@MainActor
 struct MeditationSessionView<Store: HealthDataProviding>: View {
     @ObservedObject var healthStore: Store
     let durationMinutes: Int
@@ -22,10 +23,12 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     private let startDate = Date()
 
-    init(durationMinutes: Int,
+    init(healthStore: Store,
+         durationMinutes: Int,
          useHeartRateMode: Bool,
          onComplete: @escaping () -> Void)
     {
+        self._healthStore       = ObservedObject(wrappedValue: healthStore)
         self.durationMinutes    = durationMinutes
         self.useHeartRateMode   = useHeartRateMode
         self.onComplete         = onComplete
@@ -83,21 +86,25 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
     // MARK: – Heart-Rate Mode
 
     private func startHRQuery() {
-        guard HKHealthStore.isHealthDataAvailable(),
-              let store = HKHealthStore(),
-              let type = HKQuantityType.quantityType(forIdentifier: .heartRate)
-        else { return }
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        let store = HKHealthStore()
+        guard let type = HKQuantityType.quantityType(forIdentifier: .heartRate) else { return }
 
         let predicate = HKQuery.predicateForSamples(
             withStart: startDate, end: nil, options: []
         )
         let query = HKAnchoredObjectQuery(
             type: type, predicate: predicate, anchor: nil, limit: HKObjectQueryNoLimit
-        ) { _, samples, _, _, _ in
-            process(samples)
+        )
+        { _, samples, _, _, _ in
+            Task { @MainActor in
+                self.process(samples)
+            }
         }
         query.updateHandler = { _, samples, _, _, _ in
-            process(samples)
+            Task { @MainActor in
+                self.process(samples)
+            }
         }
         store.execute(query)
     }

@@ -7,7 +7,7 @@ struct ContentView: View {
         NavigationStack {
             List {
                 NavigationLink {
-                    MeditationDetailView(healthStore: healthStore)
+                    MeditationDetailView<HealthStore>(healthStore: healthStore)
                 } label: {
                     MetricRow(label: "Meditated", value: "\(healthStore.meditationDays)/7")
                 }
