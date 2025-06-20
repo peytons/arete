@@ -70,7 +70,7 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
         }
     }
 
-    // MARK: – Timer Mode
+    // MARK: - Timer Mode
 
     private func tickTimer() {
         if timeRemaining > 0 {
@@ -83,7 +83,7 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
         }
     }
 
-    // MARK: – Heart-Rate Mode
+    // MARK: - Heart-Rate Mode
 
     private func startHRQuery() {
         guard HKHealthStore.isHealthDataAvailable() else { return }
@@ -132,7 +132,7 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
         }
     }
 
-    // MARK: – Session Completion
+    // MARK: - Session Completion
 
     private func endSession() {
         guard isActive else { return }
@@ -144,7 +144,7 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
         }
     }
 
-    // MARK: – Haptic & Logging
+    // MARK: - Haptic & Logging
 
     private func playHaptic(_ type: WKHapticType) {
         print("🔔 Playing haptic: \(type)")
@@ -168,7 +168,7 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
 //        }
 //    }
 
-    // MARK: – Utils
+    // MARK: - Utils
 
     private func formatTime(_ seconds: Int) -> String {
         let m = seconds / 60, s = seconds % 60
