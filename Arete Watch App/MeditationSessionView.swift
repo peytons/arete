@@ -8,7 +8,7 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
     @ObservedObject var healthStore: Store
     let durationMinutes: Int
     let useHeartRateMode: Bool
-    let onComplete: () -> Void
+    let onComplete: ([HRDataPoint]) -> Void
 
     // Timer mode state
     @State private var timeRemaining: Int
@@ -17,6 +17,7 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
     // HR mode state
     @State private var currentHR: Double = 0
     @State private var hrSamples: [Double] = []
+    @State private var hrHistory: [HRDataPoint] = []
     private let stabilityThreshold = 3.0    // ±3 BPM
     private let requiredStableTime = 30     // seconds
 
@@ -26,7 +27,7 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
     init(healthStore: Store,
          durationMinutes: Int,
          useHeartRateMode: Bool,
-         onComplete: @escaping () -> Void)
+         onComplete: @escaping ([HRDataPoint]) -> Void)
     {
         self._healthStore       = ObservedObject(wrappedValue: healthStore)
         self.durationMinutes    = durationMinutes
@@ -117,6 +118,8 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
                     .doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
                 currentHR = hr
                 hrSamples.append(hr)
+                let elapsed = s.endDate.timeIntervalSince(startDate)
+                hrHistory.append(HRDataPoint(time: elapsed, bpm: hr))
                 if hrSamples.count > requiredStableTime {
                     hrSamples.removeFirst(hrSamples.count - requiredStableTime)
                 }
@@ -139,8 +142,9 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
         isActive = false
         playHaptic(.success)
         healthStore.logMindfulness(start: startDate, end: Date())
+        let historyCopy = hrHistory
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            onComplete()
+            onComplete(historyCopy)
         }
     }
 

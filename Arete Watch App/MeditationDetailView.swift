@@ -6,6 +6,8 @@ struct MeditationDetailView<Store: HealthDataProviding>: View {
     @State private var selectedDuration = 1
     @State private var useHRMode        = false
     @State private var showCustomPicker = false
+    @State private var showSummary      = false
+    @State private var summaryPoints: [HRDataPoint] = []
     
     let presetDurations = [1, 2, 5, 10, 30]
     let customRange     = Array(1...60)
@@ -67,11 +69,18 @@ struct MeditationDetailView<Store: HealthDataProviding>: View {
                 healthStore: healthStore,
                 durationMinutes: selectedDuration,
                 useHeartRateMode: useHRMode,
-                onComplete: {
+                onComplete: { points in
                     healthStore.requestAuthorization()
+                    summaryPoints = points
                     showSession = false
+                    showSummary = true
                 }
             )
+        }
+        .navigationDestination(isPresented: $showSummary) {
+            MeditationSummaryView(points: summaryPoints) {
+                showSummary = false
+            }
         }
     }
 }
