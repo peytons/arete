@@ -2,7 +2,16 @@ import Foundation
 import HealthKit
 import Combine
 
-final class HealthStore: ObservableObject {
+/// Protocol for injecting either real or mock health data
+protocol HealthDataProviding: ObservableObject {
+    var meditationDays: Int { get }
+    var workoutDays:    Int { get }
+    var sleepScore:     Int { get }
+    func requestAuthorization()
+    func logMindfulness(start: Date, end: Date)
+}
+
+final class HealthStore: HealthDataProviding {
     private let store = HKHealthStore()
     @Published var meditationDays = 0
     @Published var workoutDays    = 0
@@ -89,4 +98,32 @@ final class HealthStore: ObservableObject {
         }
         store.execute(q)
     }
+    
+    func logMindfulness(start: Date, end: Date) {
+      guard HKHealthStore.isHealthDataAvailable() else { return }
+      let store = HKHealthStore()
+      let type = HKCategoryType.categoryType(forIdentifier: .mindfulSession)!
+      let sample = HKCategorySample(type: type,
+                                    value: HKCategoryValue.notApplicable.rawValue,
+                                    start: start,
+                                    end:   end)
+      store.save(sample) { _, _ in }
+    }
+
+}
+
+/// Simple mock for SwiftUI previews
+final class MockHealthStore: HealthDataProviding {
+    @Published var meditationDays = 3
+    @Published var workoutDays    = 5
+    @Published var sleepScore     = 90
+
+    func requestAuthorization() {
+        // no-op
+    }
+    
+    func logMindfulness(start: Date, end: Date) {
+        print("Log to HK: start meditation: \(start), end: \(end)")
+    }
+
 }

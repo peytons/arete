@@ -1,11 +1,14 @@
 import SwiftUI
 
-struct MeditationDetailView: View {
-    @ObservedObject var healthStore: HealthStore
-    @State private var showSession = false
-    @State private var selectedDuration: Int = 1
+struct MeditationDetailView<Store: HealthDataProviding>: View {
+    @ObservedObject var healthStore: Store
+    @State private var showSession      = false
+    @State private var selectedDuration = 5
+    @State private var useHRMode        = false
+    @State private var showCustomPicker = false
 
     let presetDurations = [1, 2, 5, 10, 30]
+    let customRange     = Array(1...60)
 
     var body: some View {
         VStack(spacing: 12) {
@@ -14,63 +17,59 @@ struct MeditationDetailView: View {
 
             Text("Past week: \(healthStore.meditationDays) days")
 
+            // Preset durations
             Picker("Duration", selection: $selectedDuration) {
-                ForEach(presetDurations, id: \.self) { minutes in
-                    Text("\(minutes) min").tag(minutes)
+                ForEach(presetDurations, id: \.self) {
+                    Text("\($0) min").tag($0)
                 }
             }
             .pickerStyle(.navigationLink)
 
+            // Custom duration
+            Button("Custom… (\(selectedDuration) min)") {
+                showCustomPicker = true
+            }
+            .sheet(isPresented: $showCustomPicker) {
+                VStack {
+                    Picker("Minutes", selection: $selectedDuration) {
+                        ForEach(customRange, id: \.self) {
+                            Text("\($0)").tag($0)
+                        }
+                    }
+                    .labelsHidden()
+                    Button("Done") { showCustomPicker = false }
+                }
+                .padding()
+            }
+
+            // Heart-rate mode toggle
+            Toggle("End when HR stabilizes", isOn: $useHRMode)
+
+            // Start button
             Button("Start") {
                 showSession = true
             }
+            .disabled(!useHRMode && selectedDuration == 0)
 
             Spacer()
         }
         .padding()
+        .onAppear { healthStore.requestAuthorization() }
         .navigationDestination(isPresented: $showSession) {
-            MeditationSessionView(durationMinutes: selectedDuration, onComplete: {
-                healthStore.requestAuthorization()  // refresh after writing showSession = false
-            })
+            MeditationSessionView(
+                healthStore: healthStore,
+                durationMinutes: selectedDuration,
+                useHeartRateMode: useHRMode,
+                onComplete: {
+                    healthStore.requestAuthorization()
+                    showSession = false
+                }
+            )
         }
     }
 }
 
 #Preview {
-    MeditationDetailPreview()
+    MeditationDetailView(healthStore: MockHealthStore())
 }
-
-final class HealthStore: ObservableObject {
-    @Published var meditationDays = 0
-    @Published var workoutDays = 0
-    @Published var sleepScore = 0
-
-    private let store: HKHealthStore?
-    private let isPreview: Bool
-
-    init(preview: Bool = false) {
-        self.isPreview = preview
-        self.store = preview ? nil : HKHealthStore()
-
-        if preview {
-            meditationDays = 3
-            workoutDays = 5
-            sleepScore = 87
-        }
-    }
-
-    func requestAuthorization() {
-        guard !isPreview, let store else { return }
-        // HealthKit auth logic here
-    }
-
-    // Other functions can also early-return if isPreview == true
-}
-
-private struct MeditationDetailPreview: View {
-    var body: some View {
-        MeditationDetailView(healthStore: MockHealthStore())
-    }
-}
-
 
