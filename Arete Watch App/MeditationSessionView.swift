@@ -84,9 +84,10 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
 
     private func startHRQuery() {
         guard HKHealthStore.isHealthDataAvailable(),
-              let store = HKHealthStore(),
               let type = HKQuantityType.quantityType(forIdentifier: .heartRate)
         else { return }
+
+        let store = HKHealthStore()
 
         let predicate = HKQuery.predicateForSamples(
             withStart: startDate, end: nil, options: []
@@ -113,7 +114,8 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
                 if hrSamples.count > requiredStableTime {
                     hrSamples.removeFirst(hrSamples.count - requiredStableTime)
                 }
-                if let minHR = hrSamples.min(),
+                if hrSamples.count >= requiredStableTime,
+                   let minHR = hrSamples.min(),
                    let maxHR = hrSamples.max(),
                    (maxHR - minHR) <= stabilityThreshold
                 {
