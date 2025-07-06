@@ -8,8 +8,8 @@
 
 import SwiftUI
 
-struct SleepDetailView: View {
-    @ObservedObject var healthStore: HealthStore
+struct SleepDetailView<Store: HealthDataProviding>: View {
+    @ObservedObject var healthStore: Store
 
     var body: some View {
         VStack {
@@ -26,4 +26,8 @@ struct SleepDetailView: View {
         }
         .padding()
     }
+}
+
+#Preview {
+    SleepDetailView<MockHealthStore>(healthStore: MockHealthStore())
 }

@@ -2,6 +2,7 @@ import SwiftUI
 import HealthKit
 import WatchKit   // for WKInterfaceDevice
 import Combine
+import Charts
 
 @MainActor
 struct MeditationSessionView<Store: HealthDataProviding>: View {
@@ -17,6 +18,8 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
     // HR mode state
     @State private var currentHR: Double = 0
     @State private var hrSamples: [Double] = []
+    @State private var allHRSamples: [Double] = []
+    @State private var sessionEnded = false
     private let stabilityThreshold = 3.0    // ±3 BPM
     private let requiredStableTime = 30     // seconds
 
@@ -37,24 +40,29 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            Text(useHeartRateMode ? "Stabilizing…" : "Meditating")
-                .font(.headline)
-
-            if useHeartRateMode {
-                Text(String(format: "%.0f BPM", currentHR))
-                    .font(.largeTitle)
-                    .monospacedDigit()
-                ProgressView(
-                    value: min(Double(hrSamples.count), Double(requiredStableTime)),
-                    total: Double(requiredStableTime)
-                )
+            if sessionEnded {
+                summaryGraph
+                Button("Complete", action: onComplete)
             } else {
-                Text(formatTime(timeRemaining))
-                    .font(.largeTitle)
-                    .monospacedDigit()
-            }
+                Text(useHeartRateMode ? "Stabilizing…" : "Meditating")
+                    .font(.headline)
 
-            Spacer()
+                if useHeartRateMode {
+                    Text(String(format: "%.0f BPM", currentHR))
+                        .font(.largeTitle)
+                        .monospacedDigit()
+                    ProgressView(
+                        value: min(Double(hrSamples.count), Double(requiredStableTime)),
+                        total: Double(requiredStableTime)
+                    )
+                } else {
+                    Text(formatTime(timeRemaining))
+                        .font(.largeTitle)
+                        .monospacedDigit()
+                }
+
+                Spacer()
+            }
         }
         .padding()
         .onAppear {
@@ -117,6 +125,7 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
                     .doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
                 currentHR = hr
                 hrSamples.append(hr)
+                allHRSamples.append(hr)
                 if hrSamples.count > requiredStableTime {
                     hrSamples.removeFirst(hrSamples.count - requiredStableTime)
                 }
@@ -139,9 +148,7 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
         isActive = false
         playHaptic(.success)
         healthStore.logMindfulness(start: startDate, end: Date())
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            onComplete()
-        }
+        sessionEnded = true
     }
 
     // MARK: - Haptic & Logging
@@ -173,6 +180,48 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
     private func formatTime(_ seconds: Int) -> String {
         let m = seconds / 60, s = seconds % 60
         return String(format: "%02d:%02d", m, s)
+    }
+
+    private var summaryGraph: some View {
+        let minHR = allHRSamples.min() ?? 0
+        let avgSamples = allHRSamples.enumerated().map { idx, hr in
+            allHRSamples[0...idx].reduce(0, +) / Double(idx + 1)
+        }
+
+        return VStack(alignment: .leading) {
+            Chart {
+                ForEach(Array(allHRSamples.enumerated()), id: \.offset) { i, hr in
+                    PointMark(
+                        x: .value("Time", i),
+                        y: .value("BPM", hr)
+                    )
+                    .foregroundStyle(.red)
+                }
+
+                ForEach(Array(avgSamples.enumerated()), id: \.offset) { i, hr in
+                    LineMark(
+                        x: .value("Time", i),
+                        y: .value("Avg", hr)
+                    )
+                    .foregroundStyle(.gray)
+                    .interpolationMethod(.monotone)
+                }
+
+                RuleMark(y: .value("Min", minHR))
+                    .foregroundStyle(.blue)
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4]))
+                    .annotation(position: .topLeading) {
+                        Text("min \(Int(minHR))")
+                            .font(.caption2)
+                            .foregroundColor(.blue)
+                    }
+            }
+            .chartXAxis(.hidden)
+            .chartYAxis {
+                AxisMarks(position: .leading)
+            }
+        }
+        .frame(height: 100)
     }
 }
 

@@ -1,30 +1,37 @@
 import SwiftUI
 
 struct ContentView: View {
+    #if targetEnvironment(simulator)
+    typealias ActiveHealthStore = MockHealthStore
+    @StateObject private var healthStore = MockHealthStore()
+    #else
+    typealias ActiveHealthStore = HealthStore
     @StateObject private var healthStore = HealthStore()
+    #endif
+    
 
     var body: some View {
         NavigationStack {
             List {
                 NavigationLink {
-                    MeditationDetailView<HealthStore>(healthStore: healthStore)
+                    MeditationDetailView<ActiveHealthStore>(healthStore: healthStore)
                 } label: {
                     MetricRow(label: "Meditated", value: "\(healthStore.meditationDays)/7")
                 }
 
                 NavigationLink {
-                    WorkoutDetailView(healthStore: healthStore)
+                    WorkoutDetailView<ActiveHealthStore>(healthStore: healthStore)
                 } label: {
                     MetricRow(label: "Worked Out", value: "\(healthStore.workoutDays)/7")
                 }
 
                 NavigationLink {
-                    SleepDetailView(healthStore: healthStore)
+                    SleepDetailView<ActiveHealthStore>(healthStore: healthStore)
                 } label: {
                     MetricRow(label: "Sleep Score", value: "\(healthStore.sleepScore)/100")
                 }
             }
-            .navigationTitle("Arete")
+            .navigationTitle("Areté")
             .onAppear {
                 healthStore.requestAuthorization()
             }
