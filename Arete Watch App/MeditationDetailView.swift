@@ -3,9 +3,11 @@ import SwiftUI
 struct MeditationDetailView<Store: HealthDataProviding>: View {
     @ObservedObject var healthStore: Store
     @State private var showSession      = false
+    @State private var showResults      = false
     @State private var selectedDuration = 1
     @State private var useHRMode        = false
     @State private var showCustomPicker = false
+    @State private var recentHRSamples: [Double] = []
     
     let presetDurations = [1, 2, 5, 10, 30]
     let customRange     = Array(1...60)
@@ -67,11 +69,18 @@ struct MeditationDetailView<Store: HealthDataProviding>: View {
                 healthStore: healthStore,
                 durationMinutes: selectedDuration,
                 useHeartRateMode: useHRMode,
-                onComplete: {
+                onComplete: { samples in
                     healthStore.requestAuthorization()
                     showSession = false
+                    recentHRSamples = samples
+                    showResults = true
                 }
             )
+        }
+        .navigationDestination(isPresented: $showResults) {
+            MeditationResultsView(hrSamples: recentHRSamples) {
+                showResults = false
+            }
         }
     }
 }

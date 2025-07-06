@@ -8,7 +8,7 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
     @ObservedObject var healthStore: Store
     let durationMinutes: Int
     let useHeartRateMode: Bool
-    let onComplete: () -> Void
+    let onComplete: ([Double]) -> Void
 
     // Timer mode state
     @State private var timeRemaining: Int
@@ -26,7 +26,7 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
     init(healthStore: Store,
          durationMinutes: Int,
          useHeartRateMode: Bool,
-         onComplete: @escaping () -> Void)
+         onComplete: @escaping ([Double]) -> Void)
     {
         self._healthStore       = ObservedObject(wrappedValue: healthStore)
         self.durationMinutes    = durationMinutes
@@ -140,7 +140,7 @@ struct MeditationSessionView<Store: HealthDataProviding>: View {
         playHaptic(.success)
         healthStore.logMindfulness(start: startDate, end: Date())
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            onComplete()
+            onComplete(hrSamples)
         }
     }
 
