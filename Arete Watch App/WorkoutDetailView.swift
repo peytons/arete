@@ -8,8 +8,8 @@
 
 import SwiftUI
 
-struct WorkoutDetailView: View {
-    @ObservedObject var healthStore: HealthStore
+struct WorkoutDetailView<Store: HealthDataProviding>: View {
+    @ObservedObject var healthStore: Store
 
     var body: some View {
         VStack {
@@ -19,11 +19,15 @@ struct WorkoutDetailView: View {
             Text("Past 7 Days")
                 .font(.subheadline)
 
-            Text("\(healthStore.workoutDays) days with workouts")
+            Text("\(healthStore.workoutDays) days with workouts") // \(healthStore.workoutDays)
                 .padding(.top)
 
             Spacer()
         }
         .padding()
     }
+}
+
+#Preview {
+    WorkoutDetailView(healthStore: MockHealthStore())
 }
